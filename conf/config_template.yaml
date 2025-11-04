@@ -1,0 +1,12 @@
+provider:
+  - name: ${PROVIDER_NAME_1}  # 提供商名称，例如: deepseek
+    api_key: ${API_KEY_1}  # API密钥
+    base_url: ${BASE_URL_1}  # 基础URL，例如: https://api.deepseek.com/v1
+    model:
+      - ${MODEL_1_1}  # 模型名称，例如: deepseek-chat
+      - ${MODEL_1_2}  # 模型名称，例如: deepseek-reasoner
+  - name: ${PROVIDER_NAME_2}  # 提供商名称，例如: openroute
+    api_key: ${API_KEY_2}  # API密钥
+    base_url: ${BASE_URL_2}  # 基础URL，例如: https://openrouter.ai/api/v1
+    model:
+      - ${MODEL_2_1}  # 模型名称，例如: tngtech/deepseek-r1t2-chimera:free
