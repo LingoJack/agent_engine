@@ -1,13 +1,13 @@
 package main
 
 import (
+	"agent_engine/agent"
+	"agent_engine/constant"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"main/agent"
-	"main/constant"
 	"os"
 	"strings"
 
@@ -15,15 +15,19 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-var (
-	db *gorm.DB
+const (
+	// 终端宽度相关常量
+	DefaultTerminalWidth = 80  // 默认终端宽度
+	MinTerminalWidth     = 40  // 最小终端宽度
+	MaxTerminalWidth     = 200 // 最大终端宽度
+	IndentDivisor        = 20  // 缩进计算除数（宽度/20）
+	MinIndent            = 2   // 最小缩进
+	MaxIndent            = 8   // 最大缩进
 )
 
+// Response 定义标准响应结构
 type Response struct {
 	Code    int    `json:"code"`
 	Data    any    `json:"data"`
@@ -59,14 +63,6 @@ func main() {
 		return
 	}
 	log.Printf("从配置文件加载: provider=%s, model=%s, baseUrl=%s", engine.GetCurrentProviderName(), engine.ModelId, engine.BaseUrl)
-
-	// db连接
-	openedDb, err := gorm.Open(sqlite.Open("./database/agent_db.db"), &gorm.Config{})
-	if err != nil {
-		transportResponse(constant.InternalError, nil, "数据库连接失败")
-		err = nil
-	}
-	db = openedDb
 
 	// 分发处理，根据结果返回
 	data, match, err := engine.DispatchAndHandle(context.Background(), *params, *command)
@@ -126,15 +122,15 @@ func getTerminalWidth() int {
 	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		// 如果获取失败（例如输出被重定向），返回默认宽度
-		log.Printf("无法获取终端宽度，使用默认值80: %v", err)
-		return 80
+		log.Printf("无法获取终端宽度，使用默认值%d: %v", DefaultTerminalWidth, err)
+		return DefaultTerminalWidth
 	}
 	// 确保宽度在合理范围内
-	if width < 40 {
-		return 40 // 最小宽度
+	if width < MinTerminalWidth {
+		return MinTerminalWidth
 	}
-	if width > 200 {
-		return 200 // 最大宽度，避免过宽
+	if width > MaxTerminalWidth {
+		return MaxTerminalWidth
 	}
 	return width
 }
@@ -183,12 +179,12 @@ func transport(rsp any, inJson bool) {
 	// 获取终端宽度并计算自适应参数
 	width := getTerminalWidth()
 	// 缩进根据宽度自适应：宽度越大，缩进越大，但保持在合理范围内
-	indent := width / 20 // 例如：80列->4空格，100列->5空格，120列->6空格
-	if indent < 2 {
-		indent = 2 // 最小缩进
+	indent := width / IndentDivisor // 例如：80列->4空格，100列->5空格，120列->6空格
+	if indent < MinIndent {
+		indent = MinIndent
 	}
-	if indent > 8 {
-		indent = 8 // 最大缩进
+	if indent > MaxIndent {
+		indent = MaxIndent
 	}
 
 	// 使用自适应参数渲染 markdown

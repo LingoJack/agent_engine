@@ -29,7 +29,7 @@ func (h *QueryHandler) Handle(ctx context.Context, engine *Engine, params string
 	}
 
 	// openai-go sdk
-	client := openai.NewClient(option.WithAPIKey(engine.ApiKey), option.WithBaseURL(engine.BaseUrl))
+	client := openai.NewClient(option.WithAPIKey(engine.GetApiKey()), option.WithBaseURL(engine.BaseUrl))
 	completion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage(query)},
 		Model:    engine.ModelId,
