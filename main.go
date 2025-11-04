@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// 终端宽度相关常量
+	// DefaultTerminalWidth 终端宽度相关常量
 	DefaultTerminalWidth = 80  // 默认终端宽度
 	MinTerminalWidth     = 40  // 最小终端宽度
 	MaxTerminalWidth     = 200 // 最大终端宽度
