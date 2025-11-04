@@ -10,6 +10,7 @@ var (
 	// 处理器映射，根据事件类型查找对应的处理接口实现
 	eventHandlerMap = map[string]EventHandler{
 		"query": &QueryHandler{},
+		"list":  &ListHandler{}, // 列出所有提供商和模型
 	}
 )
 

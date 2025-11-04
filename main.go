@@ -46,7 +46,7 @@ func main() {
 	log.SetOutput(writer)
 
 	// 从命令行参数中获取参数
-	command := flag.StringP("command", "c", "query", "命令, 可选值: query")
+	command := flag.StringP("command", "c", "query", "命令, 可选值: query, list")
 	configPath := flag.StringP("conf", "f", "./conf.yaml", "配置文件路径")
 	extra := flag.StringP("extract", "e", "$", "提取 JSON PATH 中的某个 key 的 value，例如：$.data.reply")
 	modelId := flag.StringP("model", "m", "", "模型名称，如果不指定则选用配置文件中的第一个模型")
