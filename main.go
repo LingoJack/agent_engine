@@ -77,38 +77,40 @@ func main() {
 		return
 	}
 
-	// 如果指定了 extra 参数且不是默认值 "$"，则提取指定路径的值
-	if *extra != "" && *extra != "$" {
-		// 构建完整的响应结构
-		fullResponse := map[string]any{
-			"code":    constant.Success,
-			"data":    data,
-			"message": "success",
-		}
-		// 将完整响应转换为 JSON 字符串
-		jsonData, err := json.Marshal(fullResponse)
-		if err != nil {
-			log.Printf("序列化数据失败: %v", err)
-			transportResponse(constant.InternalError, nil, "序列化数据失败: "+err.Error())
+	if *command == "query" {
+		// 如果指定了 extra 参数且不是默认值 "$"，则提取指定路径的值
+		if *extra != "" && *extra != "$" {
+			// 构建完整的响应结构
+			fullResponse := map[string]any{
+				"code":    constant.Success,
+				"data":    data,
+				"message": "success",
+			}
+			// 将完整响应转换为 JSON 字符串
+			jsonData, err := json.Marshal(fullResponse)
+			if err != nil {
+				log.Printf("序列化数据失败: %v", err)
+				transportResponse(constant.InternalError, nil, "序列化数据失败: "+err.Error())
+				return
+			}
+
+			// 处理 JSONPath 语法：去掉开头的 "$." 前缀（gjson 不需要 $ 前缀）
+			extractPath := *extra
+			if strings.HasPrefix(extractPath, "$.") {
+				extractPath = strings.TrimPrefix(extractPath, "$.")
+			}
+
+			// 使用 gjson 提取指定路径的值
+			result := gjson.GetBytes(jsonData, extractPath)
+			if !result.Exists() {
+				log.Printf("提取路径 %s 不存在（原始路径: %s）", extractPath, *extra)
+				transportResponse(constant.InternalError, nil, "提取路径不存在: "+*extra)
+				return
+			}
+			// 直接输出提取的值（不包装在响应结构中）
+			transport(result.Value(), false)
 			return
 		}
-
-		// 处理 JSONPath 语法：去掉开头的 "$." 前缀（gjson 不需要 $ 前缀）
-		extractPath := *extra
-		if strings.HasPrefix(extractPath, "$.") {
-			extractPath = strings.TrimPrefix(extractPath, "$.")
-		}
-
-		// 使用 gjson 提取指定路径的值
-		result := gjson.GetBytes(jsonData, extractPath)
-		if !result.Exists() {
-			log.Printf("提取路径 %s 不存在（原始路径: %s）", extractPath, *extra)
-			transportResponse(constant.InternalError, nil, "提取路径不存在: "+*extra)
-			return
-		}
-		// 直接输出提取的值（不包装在响应结构中）
-		transport(result.Value(), false)
-		return
 	}
 
 	// 正常，返回完整数据
