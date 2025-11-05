@@ -46,7 +46,7 @@ func main() {
 	log.SetOutput(writer)
 
 	// 从命令行参数中获取参数
-	command := flag.StringP("command", "c", "query", "命令, 可选值: query, list")
+	command := flag.StringP("command", "c", "query", "命令, 可选值: query, list, render")
 	configPath := flag.StringP("conf", "f", "./conf.yaml", "配置文件路径")
 	extra := flag.StringP("extract", "e", "$", "提取 JSON PATH 中的某个 key 的 value，例如：$.data.reply")
 	modelId := flag.StringP("model", "m", "", "模型名称，如果不指定则选用配置文件中的第一个模型")
@@ -54,6 +54,13 @@ func main() {
 	providerName := flag.String("provider", "", "提供商名称，如果不指定则选用配置文件中的第一个提供商")
 
 	flag.Parse()
+
+	// render 命令不需要加载配置文件，直接渲染输出
+	if *command == "render" {
+		// 直接使用 markdown 渲染并输出
+		transport(*params, false)
+		return
+	}
 
 	// 从配置文件创建 Engine
 	engine, err := agent.NewEngineFromConfig(*configPath, *providerName, *modelId)
