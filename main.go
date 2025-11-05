@@ -106,7 +106,7 @@ func main() {
 
 	// 统一处理参数：如果 -p 参数为空，则从标准输入读取
 	var inputContent string
-	if *params == "" {
+	if *params == "" && *command != "list" {
 		// 从标准输入读取所有内容
 		inputBytes, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -117,12 +117,9 @@ func main() {
 		inputContent = string(inputBytes)
 		// 如果标准输入为空，根据命令类型决定是否报错
 		if strings.TrimSpace(inputContent) == "" {
-			// list 命令可以不需要参数，其他命令需要内容
-			if *command != "list" {
-				log.Printf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command)
-				transportResponse(constant.InternalError, nil, fmt.Sprintf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command))
-				return
-			}
+			log.Printf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command)
+			transportResponse(constant.InternalError, nil, fmt.Sprintf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command))
+			return
 		}
 	} else {
 		// 使用命令行参数提供的内容
