@@ -50,15 +50,40 @@ func main() {
 	configPath := flag.StringP("conf", "f", "./conf.yaml", "配置文件路径")
 	extra := flag.StringP("extract", "e", "$", "提取 JSON PATH 中的某个 key 的 value，例如：$.data.reply")
 	modelId := flag.StringP("model", "m", "", "模型名称，如果不指定则选用配置文件中的第一个模型")
-	params := flag.StringP("params", "p", "", "参数，string类型")
+	params := flag.StringP("params", "p", "", "参数，string类型；如果不指定则从标准输入读取")
 	providerName := flag.String("provider", "", "提供商名称，如果不指定则选用配置文件中的第一个提供商")
 
 	flag.Parse()
 
+	// 统一处理参数：如果 -p 参数为空，则从标准输入读取
+	var inputContent string
+	if *params == "" {
+		// 从标准输入读取所有内容
+		inputBytes, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			log.Printf("从标准输入读取失败: %v", err)
+			transportResponse(constant.InternalError, nil, "从标准输入读取失败: "+err.Error())
+			return
+		}
+		inputContent = string(inputBytes)
+		// 如果标准输入为空，根据命令类型决定是否报错
+		if strings.TrimSpace(inputContent) == "" {
+			// list 命令可以不需要参数，其他命令需要内容
+			if *command != "list" {
+				log.Printf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command)
+				transportResponse(constant.InternalError, nil, fmt.Sprintf("%s 命令需要内容：请通过 -p 参数指定或从标准输入提供", *command))
+				return
+			}
+		}
+	} else {
+		// 使用命令行参数提供的内容
+		inputContent = *params
+	}
+
 	// render 命令不需要加载配置文件，直接渲染输出
 	if *command == "render" {
 		// 直接使用 markdown 渲染并输出
-		transport(*params, false)
+		transport(inputContent, false)
 		return
 	}
 
@@ -71,8 +96,8 @@ func main() {
 	}
 	log.Printf("从配置文件加载: provider=%s, model=%s, baseUrl=%s", engine.GetCurrentProviderName(), engine.ModelId, engine.BaseUrl)
 
-	// 分发处理，根据结果返回
-	data, match, err := engine.DispatchAndHandle(context.Background(), *params, *command)
+	// 分发处理，根据结果返回（使用统一处理后的 inputContent）
+	data, match, err := engine.DispatchAndHandle(context.Background(), inputContent, *command)
 	if err != nil {
 		// 如果没有匹配到事件，返回错误
 		if !match {
