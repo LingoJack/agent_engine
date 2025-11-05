@@ -1,3 +1,4 @@
 .env
 conf/config.yaml
 copilot
+.idea

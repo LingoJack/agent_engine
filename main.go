@@ -37,7 +37,7 @@ type Response struct {
 func main() {
 
 	// 日志文件
-	logFile, err := os.OpenFile("./agent_engine_logs/log.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	logFile, err := os.OpenFile("./agent_engine_logs/log.txt", os.O_CREATE|os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		transportResponse(constant.InternalError, nil, "打开日志文件失败")
 		return
@@ -45,15 +45,64 @@ func main() {
 	writer := io.MultiWriter(logFile)
 	log.SetOutput(writer)
 
-	// 从命令行参数中获取参数
-	command := flag.StringP("command", "c", "query", "命令, 可选值: query, list, render")
-	configPath := flag.StringP("conf", "f", "./conf.yaml", "配置文件路径")
-	extra := flag.StringP("extract", "e", "$", "提取 JSON PATH 中的某个 key 的 value，例如：$.data.reply")
-	modelId := flag.StringP("model", "m", "", "模型名称，如果不指定则选用配置文件中的第一个模型")
-	params := flag.StringP("params", "p", "", "参数，string类型；如果不指定则从标准输入读取")
-	providerName := flag.String("provider", "", "提供商名称，如果不指定则选用配置文件中的第一个提供商")
+	// 自定义 Usage 函数，在 pflag 自动生成的帮助信息前添加简短说明和示例
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Agent Engine - AI 代理引擎命令行工具\n\n")
+		fmt.Fprintf(os.Stderr, "用法: %s [选项]\n\n", os.Args[0])
+
+		// 命令说明
+		fmt.Fprintf(os.Stderr, "命令说明:\n")
+		fmt.Fprintf(os.Stderr, "  query   - 向 AI 模型发送查询请求（支持自动模型轮换）\n")
+		fmt.Fprintf(os.Stderr, "  list    - 列出所有可用的提供商和模型信息\n")
+		fmt.Fprintf(os.Stderr, "  render  - 将 Markdown 文本渲染为终端友好格式\n\n")
+
+		fmt.Fprintf(os.Stderr, "选项:\n")
+		// 打印所有 flag 的帮助信息（pflag 自动生成）
+		flag.PrintDefaults()
+
+		// 使用示例
+		fmt.Fprintf(os.Stderr, "\n使用示例:\n")
+		fmt.Fprintf(os.Stderr, "  # 通过参数查询\n")
+		fmt.Fprintf(os.Stderr, "  %s -c query -p \"什么是人工智能？\"\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # 从标准输入查询\n")
+		fmt.Fprintf(os.Stderr, "  echo \"你好\" | %s -c query\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # 列出所有模型\n")
+		fmt.Fprintf(os.Stderr, "  %s -c list\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # 渲染 Markdown\n")
+		fmt.Fprintf(os.Stderr, "  cat README.md | %s -c render\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  # 提取特定字段\n")
+		fmt.Fprintf(os.Stderr, "  %s -c query -p \"你好\" -e \"$.data.reply\"\n\n", os.Args[0])
+	}
+
+	// 定义命令行参数，使用更详细的描述信息（pflag 会自动格式化）
+	command := flag.StringP("command", "c", "query",
+		"命令类型: query(查询AI), list(列出模型), render(渲染Markdown)")
+
+	configPath := flag.StringP("conf", "f", "./conf.yaml",
+		"配置文件路径（支持相对路径和绝对路径）")
+
+	extra := flag.StringP("extract", "e", "$",
+		"提取 JSON 响应中指定路径的值，使用 JSONPath 语法（如: $.data.reply）")
+
+	modelId := flag.StringP("model", "m", "",
+		"指定使用的模型名称（不指定则使用配置文件中的第一个模型）")
+
+	params := flag.StringP("params", "p", "",
+		"命令参数内容（不指定则从标准输入读取；list命令可选，其他命令必需）")
+
+	providerName := flag.String("provider", "",
+		"指定提供商名称（不指定则使用配置文件中的第一个提供商）")
+
+	// 添加 help 标志
+	help := flag.BoolP("help", "h", false, "显示此帮助信息")
 
 	flag.Parse()
+
+	// 如果用户请求帮助信息，显示后退出
+	if *help {
+		flag.Usage()
+		return
+	}
 
 	// 统一处理参数：如果 -p 参数为空，则从标准输入读取
 	var inputContent string
