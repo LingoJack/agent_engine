@@ -30,21 +30,39 @@ func (h *ListHandler) Handle(ctx context.Context, engine *Engine, params string,
 		return nil, err
 	}
 
+	// 获取所有提供商的详细信息（包括 base_url）
+	allProvidersInfo, err := engine.GetAllProvidersInfo()
+	if err != nil {
+		return nil, err
+	}
+
 	// 获取当前使用的提供商和模型
 	currentProvider := engine.GetCurrentProviderName()
 	currentModel := engine.ModelId
+	currentBaseUrl := engine.BaseUrl
+
+	// 获取配置文件路径
+	configPath := engine.GetConfigPath()
 
 	// 构建详细的提供商信息列表
 	type ProviderInfo struct {
 		Name      string   `json:"name"`       // 提供商名称
+		BaseUrl   string   `json:"base_url"`   // 提供商的 base_url
 		Models    []string `json:"models"`     // 该提供商支持的模型列表
 		IsCurrent bool     `json:"is_current"` // 是否为当前使用的提供商
 	}
 
 	providerInfos := make([]ProviderInfo, 0, len(providers))
 	for _, providerName := range providers {
+		// 从详细信息中获取 base_url
+		baseUrl := ""
+		if providerConfig, ok := allProvidersInfo[providerName]; ok {
+			baseUrl = providerConfig.BaseUrl
+		}
+
 		providerInfos = append(providerInfos, ProviderInfo{
 			Name:      providerName,
+			BaseUrl:   baseUrl,
 			Models:    allModels[providerName],
 			IsCurrent: providerName == currentProvider,
 		})
@@ -52,10 +70,12 @@ func (h *ListHandler) Handle(ctx context.Context, engine *Engine, params string,
 
 	// 构建响应数据
 	rsp = map[string]interface{}{
-		"current_provider": currentProvider,
-		"current_model":    currentModel,
-		"providers":        providerInfos,
-		"total_providers":  len(providers),
+		"config_path":       configPath,         // 配置文件绝对路径
+		"current_provider":  currentProvider,    // 当前提供商名称
+		"current_model":     currentModel,       // 当前模型ID
+		"current_base_url":  currentBaseUrl,     // 当前使用的 base_url
+		"providers":         providerInfos,      // 所有提供商的详细信息
+		"total_providers":   len(providers),     // 提供商总数
 	}
 
 	return rsp, nil

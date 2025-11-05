@@ -4,6 +4,7 @@ import (
 	"agent_engine/conf"
 	"context"
 	"fmt"
+	"path/filepath"
 )
 
 var (
@@ -40,14 +41,22 @@ func (engine *Engine) GetApiKey() string {
 
 // NewEngineFromConfig 从配置文件创建 Engine 实例
 // 参数:
-//   - configPath: 配置文件路径
+//   - configPath: 配置文件路径（支持相对路径和绝对路径）
 //   - providerName: 提供商名称，如果为空则使用默认提供商（第一个）
 //   - modelId: 模型ID，如果为空则使用提供商的默认模型（第一个）
 // 返回:
 //   - *Engine: Engine 实例指针
 //   - error: 错误信息
 func NewEngineFromConfig(configPath string, providerName string, modelId string) (*Engine, error) {
-	// 加载配置文件
+	// 将配置文件路径转换为绝对路径
+	// 如果传入的是相对路径，会基于当前工作目录转换为绝对路径
+	// 如果传入的已经是绝对路径，则保持不变
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("转换配置文件路径为绝对路径失败: %w", err)
+	}
+
+	// 加载配置文件（使用原始路径加载，因为相对路径也能正常工作）
 	config, err := conf.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("加载配置文件失败: %w", err)
@@ -90,7 +99,7 @@ func NewEngineFromConfig(configPath string, providerName string, modelId string)
 		ModelId:      finalModelId,
 		BaseUrl:      provider.BaseUrl,
 		apiKey:       provider.ApiKey,
-		configPath:   configPath,
+		configPath:   absConfigPath, // 存储绝对路径
 		config:       config,
 		providerName: provider.Name,
 	}
@@ -224,6 +233,31 @@ func (engine *Engine) SwitchModel(modelId string) error {
 //   - string: 提供商名称
 func (engine *Engine) GetCurrentProviderName() string {
 	return engine.providerName
+}
+
+// GetConfigPath 获取配置文件路径
+// 返回:
+//   - string: 配置文件绝对路径
+func (engine *Engine) GetConfigPath() string {
+	return engine.configPath
+}
+
+// GetAllProvidersInfo 获取所有提供商的详细信息（包括 base_url）
+// 返回:
+//   - map[string]*conf.ProviderConfig: 提供商名称到配置的映射
+//   - error: 错误信息
+func (engine *Engine) GetAllProvidersInfo() (map[string]*conf.ProviderConfig, error) {
+	if engine.config == nil {
+		return nil, fmt.Errorf("配置未加载")
+	}
+
+	providersInfo := make(map[string]*conf.ProviderConfig)
+	for i := range engine.config.Provider {
+		p := &engine.config.Provider[i]
+		providersInfo[p.Name] = p
+	}
+
+	return providersInfo, nil
 }
 
 // DispatchAndHandle 分发和处理
